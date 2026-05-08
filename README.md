@@ -176,6 +176,66 @@ The scheduler picks it up, allocates a slot, creates a worktree, and spawns an a
 ./bin/clankwork agents list         # running agents
 ./bin/clankwork task list           # task list
 ./bin/clankwork queue list          # merge queue
+./bin/clankwork tui                 # full-screen terminal dashboard
+```
+
+### Terminal dashboard
+
+`clankwork tui` opens a local terminal dashboard for the control plane. It
+auto-refreshes every few seconds and can also run one focused pane at a time:
+
+```sh
+./bin/clankwork tui
+./bin/clankwork tui --tasks
+./bin/clankwork tui --escalations
+./bin/clankwork tui --merge-queue
+./bin/clankwork tui --health
+./bin/clankwork tui --events
+```
+
+Basic TUI controls:
+
+| Key | Action |
+|-----|--------|
+| `r` | Refresh immediately |
+| `up` / `down` or `k` / `j` | Select a row |
+| `Enter` | Inspect the selected item |
+| `Esc` or `q` | Leave detail view; `q` quits when already in the list view |
+| `Tab` / `Shift-Tab` | Move focus between dashboard panes |
+| `1`-`5` | Jump to Tasks, Escalations, Merge Queue, Health, or Events |
+| `x` | Resolve the selected escalation |
+| `t` | Retry the selected task step, or the task step linked to a selected escalation |
+| `y` | Retry the selected merge queue item |
+| `s` | Skip the selected merge queue item |
+
+### Tmux workspace
+
+`clankwork workspace` creates an opinionated tmux layout: your chosen agent runs
+in the main pane, while focused Clankwork TUI panes monitor escalations, tasks,
+merge queue state, health, and recent events.
+
+```sh
+./bin/clankwork workspace --agent codex
+./bin/clankwork workspace --agent "claude"
+./bin/clankwork workspace --session clankwork-demo --agent codex
+./bin/clankwork workspace --agent codex --replace
+```
+
+The workspace shows a first-run controls intro. Use `--no-intro` to skip it or
+`--intro` to show it again.
+
+Basic tmux controls:
+
+| Key | Action |
+|-----|--------|
+| `Ctrl-b` then arrow | Move between panes |
+| `Ctrl-b` then `z` | Zoom or unzoom the current pane |
+| `Ctrl-b` then `d` | Detach from the workspace |
+
+Reattach later with the same command:
+
+```sh
+./bin/clankwork workspace --agent codex
 ```
 
 ### Attach to an agent
@@ -218,6 +278,9 @@ clankwork agents deny <task-id-or-agent-id> <request-id>
 clankwork events <task-id-or-item-id>  # control-plane audit events (traces + decisions + actuations)
 clankwork logs <task-id>                  # print task agent log file (tail with --follow)
 clankwork verify                         # run repo verification (or verify test/lint/typecheck)
+clankwork tui                            # full terminal dashboard
+clankwork tui --escalations              # focused escalation pane
+clankwork workspace --agent codex        # tmux workspace with agent + TUI panes
 clankwork plan list                   # list plans
 clankwork plan show <id>              # show plan details
 clankwork queue list                  # merge queue state
