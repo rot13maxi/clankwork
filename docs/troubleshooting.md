@@ -9,6 +9,8 @@ clankwork events <task-id-or-item-id>
 clankwork agents list
 ```
 
+To check daemon reachability, run `clankwork tui --health`.
+
 ## Daemon Will Not Start
 
 - Check `$CLANKWORK_HOME` permissions.
