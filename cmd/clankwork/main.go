@@ -29,6 +29,8 @@ func main() {
 			doctorCmd(),
 			planCmd(),
 			taskCmd(),
+			tuiCmd(),
+			workspaceCmd(),
 			repoCmd(),
 			attachCmd(),
 			logsCmd(),
