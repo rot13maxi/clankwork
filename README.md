@@ -23,6 +23,7 @@ Clankwork is not a chatbot that says “done.” It treats agents as disposable 
 11. [Prior-Art Index](#prior-art-index)
 12. [Signals and Evidence](#signals-and-evidence)
 13. [Merge Queue Auditability](#merge-queue-auditability)
+14. [Reference Docs](#reference-docs)
 
 ---
 
@@ -96,7 +97,8 @@ isolated git worktrees, acceptance artifacts, and merge queue
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the full implemented
-architecture reference and the explicit list of work that is still aspirational.
+architecture reference and [docs/implementation-status.md](docs/implementation-status.md)
+for the explicit implemented/partial/future status of reviewed features.
 
 ### Components
 
@@ -411,6 +413,8 @@ Agent roles are markdown files in the repository's `roles/` directory:
 
 ```sh
 roles/
+  planner.md
+  triager.md
   implementer.md
   bugfixer.md
   refactorer.md
@@ -418,6 +422,7 @@ roles/
   critic.md
   acceptance.md
   conflict-resolver.md
+  learning-extractor.md
 ```
 
 A role definition describes what the agent does, how it should approach its work, quality standards, and signal conventions. The template step's `role` field maps to `roles/<name>.md`. This separates **what to do** (role definition) from **how to do it** (template) from **what runs it** (runtime config).
@@ -442,6 +447,12 @@ and referenced by stable `artifact_id`s in reports.
 
 Negative controls are first-class: structurally valid failures route the task back to
 implementation with concrete, probe-scoped failure context.
+
+The canonical acceptance reference is [docs/acceptance-verification.md](docs/acceptance-verification.md).
+It summarizes the full hardened acceptance design from
+[docs/hardened-acceptance-verification.md](docs/hardened-acceptance-verification.md)
+and is the starting point for artifact schemas, computed confidence, registry
+requirements, invalidation, negative controls, and smoke coverage.
 
 ## Configuration
 
@@ -490,6 +501,9 @@ model   = "pi"
 
 Runtime escalation is configured in the daemon's `config.toml`. Project-local
 runtime policy in `clankwork.toml` is not implemented yet.
+
+For every supported key, defaults, and limitations, see
+[docs/config-reference.md](docs/config-reference.md).
 
 ---
 
@@ -872,6 +886,18 @@ Search results are ranked with visible `rework_score` and `risk_score` bias so p
 
 ---
 
+## Reference Docs
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — local development, testing, and PR expectations.
+- [docs/api-reference.md](docs/api-reference.md) — Unix-socket HTTP endpoints, request style, response envelope, and error codes.
+- [docs/config-reference.md](docs/config-reference.md) — complete `$CLANKWORK_HOME/config.toml` reference.
+- [docs/migration-guide.md](docs/migration-guide.md) — SQLite migration conventions and schema-change workflow.
+- [docs/troubleshooting.md](docs/troubleshooting.md) — common daemon, runtime, ACP, acceptance, and merge-queue failures.
+- [docs/deployment.md](docs/deployment.md) — workstation, systemd, Docker, and production deployment notes.
+- [docs/implementation-status.md](docs/implementation-status.md) — implemented, partial, and aspirational feature status.
+
+---
+
 ## Directory Structure
 
 ```
@@ -890,4 +916,12 @@ clankwork/
 │   └── worker/             # tmux spawner + git worktree creator
 ├── migrations/             # SQLite migrations (embedded)
 └── docs/
-    └── architecture.md     # Implemented architecture reference
+    ├── acceptance-verification.md
+    ├── api-reference.md
+    ├── architecture.md
+    ├── config-reference.md
+    ├── deployment.md
+    ├── implementation-status.md
+    ├── migration-guide.md
+    └── troubleshooting.md
+```
