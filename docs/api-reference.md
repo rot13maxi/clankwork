@@ -234,9 +234,9 @@ Schemas are documented in [acceptance-verification.md](acceptance-verification.m
 | `POST` | `/v1/queue.retry` | Requeue a failed item. |
 | `GET` | `/v1/traces.list` | Query traces. |
 | `GET` | `/v1/config` | Effective config. |
-| `POST` | `/v1/learnings.add` | Add compatibility learning. |
-| `POST` | `/v1/learnings.candidateAdd` | Add candidate learning. |
-| `GET` | `/v1/learnings.candidateList` | List candidate learnings. |
+| `POST` | `/v1/learnings.add` | Deprecated compatibility endpoint for legacy learnings tables. Prefer the prior-art index. |
+| `POST` | `/v1/learnings.candidateAdd` | Deprecated compatibility endpoint for legacy candidate learnings. Prefer the prior-art index. |
+| `GET` | `/v1/learnings.candidateList` | Deprecated compatibility endpoint listing legacy candidate learnings. |
 | `GET` | `/prior-art/search` | Compatibility prior-art search route. |
 | `GET` | `/v1/prior-art.search` | Search prior task histories. |
 | `GET` | `/v1/prior-art.show?task_id=<id>` | Show indexed history. |

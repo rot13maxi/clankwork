@@ -11,19 +11,25 @@ Clankwork is not a chatbot that says “done.” It treats agents as disposable 
 ## Contents
 
 1. [Overview](#overview)
-2. [Why this exists](#why-this-exists)
-3. [Architecture](#architecture)
-4. [Quick Start](#quick-start)
-5. [CLI Reference](#cli-reference)
-6. [Workflow Templates](#workflow-templates)
-7. [Configuration](#configuration)
-8. [Data Model](#data-model)
-9. [Agent Lifecycle](#agent-lifecycle)
-10. [Merge Queue](#merge-queue)
-11. [Prior-Art Index](#prior-art-index)
-12. [Signals and Evidence](#signals-and-evidence)
-13. [Merge Queue Auditability](#merge-queue-auditability)
-14. [Reference Docs](#reference-docs)
+2. [Project status](#project-status)
+3. [Why this exists](#why-this-exists)
+4. [Architecture](#architecture)
+5. [Install](#install)
+6. [Try it locally](#try-it-locally)
+7. [Quick Start](#quick-start)
+8. [Repository hygiene](#repository-hygiene)
+9. [CLI Reference](#cli-reference)
+10. [Workflow Templates](#workflow-templates)
+11. [Configuration](#configuration)
+12. [Data Model](#data-model)
+13. [Agent Lifecycle](#agent-lifecycle)
+14. [Merge Queue](#merge-queue)
+15. [Prior-Art Index](#prior-art-index)
+16. [Signals and Evidence](#signals-and-evidence)
+17. [Merge Queue Auditability](#merge-queue-auditability)
+18. [Security](#security)
+19. [License](#license)
+20. [Reference Docs](#reference-docs)
 
 ---
 
@@ -50,6 +56,16 @@ Clankwork separates three concerns that are often collapsed in agent systems:
 - **What runs it:** interchangeable runtimes and models, from frontier planning agents to cheaper or local execution workers.
 
 That split lets the control plane stay deterministic while still taking advantage of heterogeneous model capabilities.
+
+---
+
+## Project status
+
+Clankwork is early public software. The core local control plane, workflow templates, task dispatch, evidence artifacts, acceptance verification, merge queue, ACP and tmux runtimes, terminal TUI, tmux workspace, and prior-art search are implemented.
+
+Not yet implemented: official Docker image, GitHub/Linear ticket ingestion, web dashboard, multi-user/team authorization, cryptographic artifact signing, and learned prompt optimization.
+
+See [docs/implementation-status.md](docs/implementation-status.md) for the current implemented / partial / not implemented matrix.
 
 ---
 
@@ -124,6 +140,96 @@ The reconciler uses a stateful, deterministic control loop rather than binary su
 - **Escalation policy** from cheap interventions (nudge) to heavier recovery (restart/escalate/requeue).
 
 This design is intentionally conservative: it still prefers reproducible controls over model intelligence, while making stalls and flapping work recoverable instead of silent.
+
+---
+
+## Install
+
+### Prerequisites
+
+- Go 1.25+
+- git
+- tmux, if using tmux runtimes or `clankwork workspace`
+- an agent runtime such as Claude Code, Codex, Pi, or an ACP adapter
+
+### From source
+
+```sh
+git clone https://github.com/rot13maxi/clankwork
+cd clankwork
+make build
+```
+
+The build produces `bin/clankwork` in the repo root. Move or symlink it onto
+your `$PATH` if you want to call it as just `clankwork`.
+
+### With `go install`
+
+```sh
+go install github.com/rot13maxi/clankwork/cmd/clankwork@latest
+```
+
+This places the binary in `$(go env GOBIN)` (default: `$(go env GOPATH)/bin`).
+
+---
+
+## Try it locally
+
+This creates a tiny throwaway repository, registers it with Clankwork, starts
+the daemon, and dispatches a trivial task. The verification command is
+`git status --short` so the demo does not assume a Go (or any) toolchain in
+the demo repo.
+
+```sh
+# Build clankwork.
+make build
+
+# Create a throwaway repo to operate on.
+tmpdir="$(mktemp -d)"
+mkdir -p "$tmpdir/demo-repo"
+(
+  cd "$tmpdir/demo-repo"
+  git init -q
+  git checkout -qb main
+  printf '# Demo Repo\n' > README.md
+  git add README.md
+  git -c user.email=demo@example.com -c user.name=demo \
+      commit -q -m "initial commit"
+)
+
+# Start the daemon in the background.
+./bin/clankwork daemon start --background
+
+# Register the demo repo. Use a verify command that always succeeds locally.
+./bin/clankwork repo add "$tmpdir/demo-repo" \
+  --name demo \
+  --branch main \
+  --verify-command "git status --short"
+
+# Find the repo id.
+./bin/clankwork repo list
+repo_id="$(./bin/clankwork repo list | awk '/^[A-Z0-9]+/ {print $1; exit}')"
+
+# Create a task body and dispatch it on the simple template.
+cat > /tmp/clankwork-demo-task.md <<'EOF'
+Add a short Usage section to README.md.
+EOF
+./bin/clankwork task create \
+  --title "Update demo README" \
+  --repo "$repo_id" \
+  --template simple \
+  --body /tmp/clankwork-demo-task.md
+
+# Watch progress.
+./bin/clankwork status
+./bin/clankwork tui
+```
+
+Stop the daemon when you are done:
+
+```sh
+./bin/clankwork daemon stop
+```
 
 ---
 
@@ -243,6 +349,23 @@ Reattach later with the same command:
 ```sh
 ./bin/clankwork attach <task-id-or-agent-id>  # task/agent attach shortcut
 ```
+
+---
+
+## Repository hygiene
+
+Before running agents against an important repository:
+
+1. Ensure the repo is clean: `git status`.
+2. Configure explicit verification commands with `clankwork repo add`
+   (`--verify-command`, `--lint-command`, `--typecheck-command`).
+3. Start with `--template simple` or another low-risk task while you build
+   trust in the workflow.
+4. Review generated changes before enabling `--auto-push`.
+5. Do not run untrusted workflow templates or agent runtimes. Templates and
+   repo verification commands are executed locally in your shell.
+
+Clankwork is not a sandbox. See [Security](#security) for the threat model.
 
 ---
 
@@ -946,6 +1069,25 @@ Every signal, step transition, and workflow outcome is still written to `traces`
 The `task_history_index` projection assembles those records into searchable planner context: final status, retry counts, acceptance criteria and probes, negative assertions, done-bundle claims, tests run, verification outcomes, deterministic command artifacts, merge results, and human escalations.
 
 Search results are ranked with visible `rework_score` and `risk_score` bias so planners see instructive failures early. Prior art informs planning and acceptance obligations only. It is not injected into worker agents by default, it does not relax verification, and it never reuses previous evidence as proof for a new task.
+
+---
+
+## Security
+
+Clankwork is a local automation and control-plane tool. It is intended to be
+run against repositories and agent runtimes you trust. Workflow templates,
+repository verification commands, runtime commands, and agent actions can
+execute local processes against your filesystem.
+
+For the full security posture and how to report vulnerabilities, see
+[SECURITY.md](SECURITY.md).
+
+---
+
+## License
+
+Clankwork is licensed under the [MIT License](LICENSE).
+SPDX short identifier: `MIT`.
 
 ---
 
