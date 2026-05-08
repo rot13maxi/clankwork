@@ -191,6 +191,10 @@ func (c *Client) TaskResetStep(ctx context.Context, taskID, step string) error {
 	return c.do(ctx, "POST", "/v1/tasks.resetStep", model.TaskResetStepRequest{TaskID: taskID, Step: step}, nil)
 }
 
+func (c *Client) TaskUnblock(ctx context.Context, taskID, step, reason string) error {
+	return c.do(ctx, "POST", "/v1/tasks.unblock", model.TaskUnblockRequest{TaskID: taskID, Step: step, Reason: reason}, nil)
+}
+
 func (c *Client) TaskEscalate(ctx context.Context, req model.TaskEscalateRequest) (*model.Escalation, error) {
 	var esc model.Escalation
 	err := c.do(ctx, "POST", "/v1/tasks.escalate", req, &esc)

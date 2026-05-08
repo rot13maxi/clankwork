@@ -189,6 +189,35 @@ func taskCmd() *cli.Command {
 				},
 			},
 			{
+				Name:      "unblock",
+				Usage:     "Unblock a blocked task and clear oscillation metadata",
+				ArgsUsage: "<id>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "step", Usage: "Optional step to continue from"},
+					&cli.StringFlag{Name: "reason", Required: true, Usage: "Reason for manual unblock"},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					args := cmd.Args().Slice()
+					if len(args) == 0 {
+						return fmt.Errorf("usage: clankwork task unblock <id> --reason <reason>")
+					}
+					c, err := newClient(cmd)
+					if err != nil {
+						return err
+					}
+					taskID := args[0]
+					if err := c.TaskUnblock(okCtx(), taskID, cmd.String("step"), cmd.String("reason")); err != nil {
+						return err
+					}
+					if cmd.String("step") != "" {
+						fmt.Printf("%s unblocked with step %s\n", taskID, cmd.String("step"))
+					} else {
+						fmt.Printf("%s unblocked\n", taskID)
+					}
+					return nil
+				},
+			},
+			{
 				Name:      "diagnose",
 				Usage:     "Explain why a task is or is not progressing",
 				ArgsUsage: "<id>",

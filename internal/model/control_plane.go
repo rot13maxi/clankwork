@@ -160,6 +160,13 @@ type TaskEscalateRequest struct {
 	ActorID         string   `json:"actor_id,omitempty"`
 }
 
+type TaskUnblockRequest struct {
+	TaskID  string `json:"task_id"`
+	Step    string `json:"step,omitempty"`
+	Reason  string `json:"reason"`
+	ActorID string `json:"actor_id,omitempty"`
+}
+
 type EscalationResolveRequest struct {
 	EscalationID string `json:"escalation_id"`
 	Outcome      string `json:"outcome"`

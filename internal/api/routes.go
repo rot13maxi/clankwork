@@ -55,6 +55,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/tasks.setPriority", s.handleTasksSetPriority)
 	mux.HandleFunc("POST /v1/tasks.retry", s.handleTasksRetry)
 	mux.HandleFunc("POST /v1/tasks.close", s.handleTasksClose)
+	mux.HandleFunc("POST /v1/tasks.unblock", s.handleTasksUnblock)
 	mux.HandleFunc("GET /v1/tasks.diagnose", s.handleTasksDiagnose)
 	mux.HandleFunc("POST /v1/tasks.retryStep", s.handleTasksRetryStep)
 	mux.HandleFunc("POST /v1/tasks.resetStep", s.handleTasksResetStep)

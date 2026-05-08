@@ -238,6 +238,40 @@ func (s *Server) handleTasksResetStep(w http.ResponseWriter, r *http.Request) {
 	OK(w, map[string]string{"task_id": req.TaskID, "step": req.Step, "status": "pending"})
 }
 
+func (s *Server) handleTasksUnblock(w http.ResponseWriter, r *http.Request) {
+	var req model.TaskUnblockRequest
+	if err := Decode(r, &req); err != nil {
+		Fail(w, http.StatusBadRequest, "invalid_body", err.Error())
+		return
+	}
+	if req.TaskID == "" || strings.TrimSpace(req.Reason) == "" {
+		Fail(w, http.StatusBadRequest, "missing_fields", "task_id and reason required")
+		return
+	}
+
+	task, err := s.store.TaskGet(r.Context(), req.TaskID)
+	if err != nil {
+		Fail(w, http.StatusNotFound, "not_found", err.Error())
+		return
+	}
+	if task.Status != "blocked" {
+		Fail(w, http.StatusBadRequest, "invalid_state", "task must be blocked to unblock")
+		return
+	}
+
+	if err := s.store.TaskUnblock(r.Context(), req.TaskID, req.Step, req.Reason, defaultActor(req.ActorID)); err != nil {
+		Fail(w, http.StatusBadRequest, "unblock_failed", err.Error())
+		return
+	}
+
+	step := req.Step
+	if step == "" {
+		step = task.CurrentStep
+	}
+	s.recordActuation(r, "task.unblock", defaultActor(req.ActorID), "task", req.TaskID, req.TaskID, step, "", task.Status, "pending", "success", "", req.Reason)
+	OK(w, map[string]string{"task_id": req.TaskID, "status": "pending", "step": step})
+}
+
 func (s *Server) resolveValidationLoopEscalations(r *http.Request, taskID, step, outcome string) {
 	escalations, err := s.store.EscalationList(r.Context(), taskID, "open")
 	if err != nil {

@@ -358,6 +358,90 @@ func (s *Store) TaskRetry(ctx context.Context, id string) error {
 	return nil
 }
 
+// TaskUnblock resets a blocked task into pending state with operator intent.
+// It clears per-step retries for the target step, removes stale oscillation data,
+// and resolves any open escalations so the control loop can resume dispatch.
+func (s *Store) TaskUnblock(ctx context.Context, taskID, step, reason, actorID string) error {
+	task, err := s.TaskGet(ctx, taskID)
+	if err != nil {
+		return err
+	}
+	if task.Status != "blocked" {
+		return fmt.Errorf("task %q is not blocked", taskID)
+	}
+
+	stepToUse := step
+	if stepToUse == "" {
+		stepToUse = task.CurrentStep
+	}
+	attempts := map[string]int{}
+	for name, count := range task.StepAttempts {
+		attempts[name] = count
+	}
+	if stepToUse != "" {
+		delete(attempts, stepToUse)
+	}
+	attemptsJSON, _ := json.Marshal(attempts)
+	if len(attemptsJSON) == 0 {
+		attemptsJSON = []byte("{}")
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+	nowStr := now
+	if actorID == "" {
+		actorID = "operator"
+	}
+	outcome := "manual unblock: " + reason
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if stepToUse == "" {
+		_, err = tx.ExecContext(ctx,
+			`UPDATE tasks
+			 SET status='pending', step_attempts=?, started_at=NULL, completed_at=NULL, updated_at=?
+			 WHERE id=?`,
+			string(attemptsJSON), nowStr, taskID)
+	} else {
+		_, err = tx.ExecContext(ctx,
+			`UPDATE tasks
+			 SET current_step=?, status='pending', step_attempts=?, started_at=NULL, completed_at=NULL, updated_at=?
+			 WHERE id=?`,
+			stepToUse, string(attemptsJSON), nowStr, taskID)
+	}
+	if err != nil {
+		return fmt.Errorf("unblock task: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE task_control_states
+		   SET oscillation_score = 0,
+		       failure_signature = '{}',
+		       updated_at = ?
+		 WHERE task_id = ?`,
+		nowStr, taskID)
+	if err != nil {
+		return fmt.Errorf("clear oscillation state: %w", err)
+	}
+
+	_, err = tx.ExecContext(ctx,
+		`UPDATE escalations
+		   SET status='resolved',
+		       outcome=?,
+		       resolved_by_type='user',
+		       resolved_by_id=?,
+		       resolved_at=?
+		 WHERE task_id=? AND status!='resolved'`,
+		outcome, actorID, nowStr, taskID)
+	if err != nil {
+		return fmt.Errorf("resolve escalations: %w", err)
+	}
+
+	return tx.Commit()
+}
+
 // TaskIncrRetry increments the global retry_count.
 func (s *Store) TaskIncrRetry(ctx context.Context, id string) error {
 	now := time.Now().UTC().Format(time.RFC3339)
