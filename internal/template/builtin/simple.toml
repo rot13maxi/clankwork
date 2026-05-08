@@ -1,0 +1,11 @@
+name        = "simple"
+description = "Implement and auto-merge with no test verification"
+entry       = "implement"
+auto_merge  = true
+
+[steps.implement]
+type        = "agent"
+role        = "implementer"
+max_retries = 3
+on_success  = "complete"
+on_failure  = "implement"

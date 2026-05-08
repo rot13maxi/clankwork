@@ -1,0 +1,32 @@
+name        = "critique"
+description = "Implementation with LLM critic gate: implement → lint → critic → verify → merge"
+entry       = "implement"
+auto_merge  = true
+
+[steps.implement]
+type        = "agent"
+role        = "implementer"
+max_retries = 5
+on_success  = "lint"
+on_failure  = "implement"
+
+[steps.lint]
+type       = "deterministic"
+command    = "clankwork"
+args       = ["verify", "lint"]
+on_success = "critic"
+on_failure = "implement"
+
+[steps.critic]
+type        = "agent"
+role        = "critic"
+max_retries = 4
+on_success  = "verify"
+on_failure  = "implement"
+
+[steps.verify]
+type       = "deterministic"
+command    = "clankwork"
+args       = ["verify"]
+on_success = "complete"
+on_failure = "implement"

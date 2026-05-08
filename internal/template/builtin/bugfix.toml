@@ -1,0 +1,32 @@
+name        = "bugfix"
+description = "Bug fix with test verification (acceptance testing optional based on triage)"
+entry       = "implement"
+auto_merge  = true
+
+[steps.implement]
+type        = "agent"
+role        = "bugfixer"
+max_retries = 3
+on_success  = "lint"
+on_failure  = "implement"
+
+[steps.lint]
+type       = "deterministic"
+command    = "clankwork"
+args       = ["verify", "lint"]
+on_success = "typecheck"
+on_failure = "implement"
+
+[steps.typecheck]
+type       = "deterministic"
+command    = "clankwork"
+args       = ["verify", "typecheck"]
+on_success = "test"
+on_failure = "implement"
+
+[steps.test]
+type       = "deterministic"
+command    = "clankwork"
+args       = ["verify"]
+on_success = "complete"
+on_failure = "implement"

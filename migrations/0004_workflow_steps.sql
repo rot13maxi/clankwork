@@ -1,0 +1,2 @@
+ALTER TABLE tasks ADD COLUMN current_step     TEXT;
+ALTER TABLE tasks ADD COLUMN step_retry_count INTEGER NOT NULL DEFAULT 0;

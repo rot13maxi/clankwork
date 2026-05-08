@@ -1,0 +1,14 @@
+*.sqlite
+*.db
+.DS_Store
+*.aider*
+plan-*.json
+planner-*.json
+plans/
+artifacts/
+.gstack/
+bin/clankwork
+/clankwork
+clankwork-architecture.html
+.claude/worktrees/
+.claude/scheduled_tasks.lock
