@@ -12,11 +12,11 @@ import (
 func learningCmd() *cli.Command {
 	return &cli.Command{
 		Name:  "learning",
-		Usage: "Deprecated compatibility commands for legacy learnings",
+		Usage: "Deprecated. Use 'clankwork prior-art ...' for planner retrieval; legacy learnings tables remain only for compatibility.",
 		Commands: []*cli.Command{
 			{
 				Name:      "add",
-				Usage:     "Submit a learning from a markdown file",
+				Usage:     "Deprecated: submit a legacy learning from a markdown file. Prefer the prior-art index.",
 				ArgsUsage: "<file>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "category", Value: "general", Usage: "Category tag"},
@@ -49,7 +49,7 @@ func learningCmd() *cli.Command {
 			},
 			{
 				Name:      "candidate-add",
-				Usage:     "Submit a candidate learning that requires review before promotion",
+				Usage:     "Deprecated: submit a candidate legacy learning. Prefer the prior-art index.",
 				ArgsUsage: "<file>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "source-trace", Required: true, Usage: "Source trace ID"},
@@ -82,7 +82,7 @@ func learningCmd() *cli.Command {
 			},
 			{
 				Name:  "candidate-list",
-				Usage: "List candidate learnings",
+				Usage: "Deprecated: list candidate legacy learnings.",
 				Flags: []cli.Flag{
 					&cli.StringFlag{Name: "status", Value: "candidate", Usage: "Candidate status filter"},
 					&cli.StringFlag{Name: "format", Usage: "Output format: human (default) or json"},

@@ -297,7 +297,7 @@ complete system behavior:
   lives in the daemon config; repo-local runtime policy is still future work.
 - **Automated ticket ingestion:** GitHub/Linear ingestion is not implemented.
   Plans and tasks are created through CLI/API today.
-- **Rich dashboard/TUI:** the implemented operator surface is CLI plus JSON API.
+- **Web dashboard / multi-user operator console:** the implemented operator surfaces are CLI, JSON API, terminal TUI, and tmux workspace. A browser dashboard is future work.
 - **Custom native agent harness:** Clankwork still launches existing runtimes
   through tmux or ACP adapters.
 - **Learned prompt optimization:** roles are data, but there is no DSPy-style

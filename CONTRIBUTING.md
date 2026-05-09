@@ -1,5 +1,20 @@
 # Contributing
 
+Clankwork is early-stage. Issues and small, focused PRs are welcome.
+
+Good first contributions:
+
+- documentation fixes,
+- reproducible bug reports,
+- runtime adapter notes,
+- small CLI usability fixes,
+- tests for existing behavior.
+
+Before larger architectural changes, please open an issue describing the use
+case and the proposed design. The control plane should remain deterministic:
+LLMs may propose work, critique work, or produce evidence, but control-plane
+state transitions stay auditable and replayable.
+
 Clankwork is a Go CLI and deterministic control-plane daemon. Keep changes
 small, observable, and backed by tests or executable evidence.
 

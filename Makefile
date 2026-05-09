@@ -1,4 +1,4 @@
-GO := $(shell which go || echo ~/.local/share/mise/installs/go/1.22.12/bin/go)
+GO ?= go
 BIN := bin/clankwork
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 ACP_ADAPTER_VERSION ?= v0.3.7

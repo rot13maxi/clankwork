@@ -30,7 +30,7 @@ sounds broader than this page, treat this page as the current status reference.
 
 - Official Docker image or checked-in Dockerfile.
 - GitHub/Linear ticket ingestion.
-- Rich dashboard/TUI beyond CLI and JSON API.
+- Rich web dashboard. A terminal TUI and tmux workspace are implemented, but there is no browser-based dashboard or multi-user operator console.
 - Learned prompt optimization.
 - Cryptographic artifact signing.
 - Mutation testing against known-bad implementations.
