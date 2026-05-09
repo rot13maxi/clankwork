@@ -169,6 +169,9 @@ func (d *Dispatcher) dispatchSimple(ctx context.Context, task *model.Task) error
 	if !ok {
 		return fmt.Errorf("unknown runtime %q", runtimeName)
 	}
+	if err := preflightSandbox(rt); err != nil {
+		return fmt.Errorf("runtime %q: %w", runtimeName, err)
+	}
 
 	var worktreePath string
 	if task.RepoID != "" {
@@ -228,7 +231,8 @@ func (d *Dispatcher) dispatchSimple(ctx context.Context, task *model.Task) error
 		args = append(append([]string{}, rt.Args...), bootstrapMessage("implement"))
 	}
 
-	if err := d.spawner.Spawn(sessionName, workdir, rt.Command, args, env); err != nil {
+	spawnCmd, spawnArgs := wrapForSandbox(rt, workdir, d.homeDir, rt.Command, args)
+	if err := d.spawner.Spawn(sessionName, workdir, spawnCmd, spawnArgs, env); err != nil {
 		if worktreePath != "" {
 			d.worktree.Remove(worktreePath)
 		}
@@ -397,6 +401,10 @@ func (d *Dispatcher) dispatchAgent(ctx context.Context, task *model.Task, stepNa
 		}
 	}
 
+	if err := preflightSandbox(rt); err != nil {
+		return fmt.Errorf("runtime %q: %w", runtimeName, err)
+	}
+
 	sessionName := "clankwork-worker-" + task.ID
 	logDir := filepath.Join(d.homeDir, "logs")
 	logfilePath := filepath.Join(logDir, sessionName+".log")
@@ -451,7 +459,8 @@ func (d *Dispatcher) dispatchAgent(ctx context.Context, task *model.Task, stepNa
 		args = append(append([]string{}, rt.Args...), bootstrapMessage(stepName))
 	}
 
-	if err := d.spawner.Spawn(sessionName, workdir, rt.Command, args, env); err != nil {
+	spawnCmd, spawnArgs := wrapForSandbox(rt, workdir, d.homeDir, rt.Command, args)
+	if err := d.spawner.Spawn(sessionName, workdir, spawnCmd, spawnArgs, env); err != nil {
 		if worktreePath != "" {
 			d.worktree.Remove(worktreePath)
 		}

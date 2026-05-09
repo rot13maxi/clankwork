@@ -29,7 +29,7 @@ func workspaceCmd() *cli.Command {
 			&cli.BoolFlag{Name: "intro", Usage: "Show the workspace controls intro even if it was already seen"},
 			&cli.BoolFlag{Name: "no-intro", Usage: "Skip the first-run workspace controls intro"},
 		},
-		Subcommands: []*cli.Command{
+		Commands: []*cli.Command{
 			{
 				Name:  "close",
 				Usage: "Close clankwork workspace sessions",
