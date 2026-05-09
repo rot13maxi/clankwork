@@ -13,11 +13,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Install runtime test deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends tmux jq
+
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci@clankwork.test"
+          git config --global user.name "Clankwork CI"
+          git config --global init.defaultBranch main
+          git config --global commit.gpgsign false
+
       - name: go vet
         run: go vet ./...
+
       - name: go test
-        run: go test ./... -count=1
+        run: go test ./... -count=1 -timeout=10m -v
