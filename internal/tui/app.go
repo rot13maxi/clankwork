@@ -69,7 +69,7 @@ func Run(cfg Config) error {
 		selected: make(map[Mode]int),
 		loading:  true,
 	}
-	_, err := tea.NewProgram(m, tea.WithAltScreen()).Run()
+	_, err := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run()
 	return err
 }
 

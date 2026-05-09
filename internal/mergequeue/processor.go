@@ -31,6 +31,9 @@ type Processor struct {
 
 	mu         sync.Mutex
 	activeRepo map[string]bool // repos currently being processed
+
+	lastQueuePressure       model.QueuePressureDecision
+	hadQueuePressureHistory bool
 }
 
 func NewProcessor(st *store.Store, cfg *config.Config, homeDir string, disp Pressurable) *Processor {
@@ -49,14 +52,16 @@ func (p *Processor) Tick(ctx context.Context) error {
 	if err == nil && p.dispatcher != nil {
 		decision := model.ComputeQueuePressure(snapshot, p.cfg.Scheduler.MergeQueueMaxDepth, 30*time.Minute, p.cfg.Scheduler.MaxSlots)
 		p.dispatcher.SetQueuePressureDecision(decision)
-		_ = p.store.ControlObservationPut(ctx, &model.ControlObservation{
-			TargetType: "merge_queue",
-			TargetID:   "global",
-			Kind:       "queue_pressure",
-			Status:     decision.Level,
-			Reason:     decision.Reason,
-			Payload:    model.MarshalPayload(decision),
-		})
+		if p.shouldRecordQueuePressure(decision) {
+			_ = p.store.ControlObservationPut(ctx, &model.ControlObservation{
+				TargetType: "merge_queue",
+				TargetID:   "global",
+				Kind:       "queue_pressure",
+				Status:     decision.Level,
+				Reason:     decision.Reason,
+				Payload:    model.MarshalPayload(decision),
+			})
+		}
 	}
 
 	repos, err := p.store.RepoList(ctx)
@@ -90,6 +95,24 @@ func (p *Processor) Tick(ctx context.Context) error {
 		}(repo, item)
 	}
 	return nil
+}
+
+func (p *Processor) shouldRecordQueuePressure(decision model.QueuePressureDecision) bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	changed := !p.hadQueuePressureHistory ||
+		p.lastQueuePressure.Level != decision.Level ||
+		p.lastQueuePressure.MaxDispatch != decision.MaxDispatch ||
+		p.lastQueuePressure.ShouldPause != decision.ShouldPause ||
+		p.lastQueuePressure.Reason != decision.Reason
+
+	if changed {
+		p.lastQueuePressure = decision
+		p.hadQueuePressureHistory = true
+	}
+
+	return changed
 }
 
 func (p *Processor) processItem(ctx context.Context, item *model.MergeQueueItem, repo *model.Repo) error {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -27,6 +28,23 @@ func workspaceCmd() *cli.Command {
 			&cli.BoolFlag{Name: "replace", Usage: "Kill and recreate an existing workspace session"},
 			&cli.BoolFlag{Name: "intro", Usage: "Show the workspace controls intro even if it was already seen"},
 			&cli.BoolFlag{Name: "no-intro", Usage: "Skip the first-run workspace controls intro"},
+		},
+		Subcommands: []*cli.Command{
+			{
+				Name:  "close",
+				Usage: "Close clankwork workspace sessions",
+				Flags: []cli.Flag{
+					&cli.StringFlag{Name: "session", Value: "clankwork", Usage: "tmux workspace session name"},
+					&cli.BoolFlag{Name: "all", Usage: "Close all clankwork workspace sessions"},
+				},
+				Action: func(ctx context.Context, cmd *cli.Command) error {
+					return closeWorkspace(workspaceCloseConfig{
+						Session: cmd.String("session"),
+						All:     cmd.Bool("all"),
+						Out:     os.Stdout,
+					})
+				},
+			},
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			home, err := config.Home(cmd.Root().String("home"))
@@ -77,6 +95,12 @@ type workspaceConfig struct {
 	Out     io.Writer
 }
 
+type workspaceCloseConfig struct {
+	Session string
+	All     bool
+	Out     io.Writer
+}
+
 func runWorkspace(cfg workspaceConfig) error {
 	if _, err := exec.LookPath("tmux"); err != nil {
 		return fmt.Errorf("tmux not found: %w", err)
@@ -104,10 +128,108 @@ func runWorkspace(cfg workspaceConfig) error {
 			created = true
 		}
 	}
+	if err := markWorkspaceSession(cfg.Session); err != nil {
+		return err
+	}
+	enableWorkspaceMouse(cfg.Session)
 	if err := maybeShowWorkspaceIntro(cfg); err != nil {
 		return err
 	}
 	return attachWorkspace(cfg.Session)
+}
+
+func closeWorkspace(cfg workspaceCloseConfig) error {
+	out := cfg.Out
+	if out == nil {
+		out = os.Stdout
+	}
+
+	if cfg.All {
+		sessions, err := listWorkspaceSessions()
+		if err != nil {
+			return err
+		}
+		if len(sessions) == 0 {
+			fmt.Fprintln(out, "no clankwork workspace sessions found")
+			return nil
+		}
+
+		failed := []string{}
+		for _, session := range sessions {
+			if err := killWorkspaceSession(session); err != nil {
+				failed = append(failed, fmt.Sprintf("%s (%v)", session, err))
+				continue
+			}
+			fmt.Fprintf(out, "closed session %q\n", session)
+		}
+		if len(failed) > 0 {
+			return errors.New(strings.Join(failed, "; "))
+		}
+		return nil
+	}
+
+	return killWorkspaceSession(cfg.Session)
+}
+
+func listWorkspaceSessions() ([]string, error) {
+	out, err := exec.Command("tmux", "list-sessions", "-F", "#{session_name}\t#{@clankwork_workspace}").CombinedOutput()
+	if err != nil {
+		output := strings.TrimSpace(string(out))
+		if output == "" || strings.Contains(output, "no server running") {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("tmux list-sessions: %w\n%s", err, output)
+	}
+	return parseWorkspaceSessionList(string(out)), nil
+}
+
+func parseWorkspaceSessionList(raw string) []string {
+	result := []string{}
+	for _, line := range strings.Split(strings.TrimSpace(raw), "\n") {
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "\t", 2)
+		if len(parts) == 0 {
+			continue
+		}
+		sessionName := strings.TrimSpace(parts[0])
+		marked := false
+		if len(parts) > 1 && strings.TrimSpace(parts[1]) == "1" {
+			marked = true
+		}
+		if marked && sessionName != "" {
+			result = append(result, sessionName)
+		}
+	}
+	return result
+}
+
+func markWorkspaceSession(session string) error {
+	out, err := exec.Command("tmux", "set-option", "-t", session, "@clankwork_workspace", "1").CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("tmux set-option -t %s @clankwork_workspace: %w\n%s", session, err, out)
+	}
+	return nil
+}
+
+func enableWorkspaceMouse(session string) {
+	_ = exec.Command("tmux", "set-option", "-t", session, "mouse", "on").Run()
+}
+
+func killWorkspaceSession(session string) error {
+	if session == "" {
+		return fmt.Errorf("empty workspace session name")
+	}
+	out, err := exec.Command("tmux", "kill-session", "-t", session).CombinedOutput()
+	if err != nil {
+		output := strings.TrimSpace(string(out))
+		if strings.Contains(output, "no server running") || strings.Contains(output, "no sessions") || strings.Contains(output, "can't find session") {
+			return nil
+		}
+		return fmt.Errorf("tmux kill-session -t %s: %w\n%s", session, err, out)
+	}
+	return nil
 }
 
 func maybeShowWorkspaceIntro(cfg workspaceConfig) error {
@@ -157,6 +279,7 @@ Merge queue:
   y                   retry selected queue item
   s                   skip selected queue item
 
+Run `+"`"+"clankwork workspace close --all"+"`"+` to close all Clankwork workspace sessions.
 Run with --no-intro to skip this message, or --intro to show it again.
 `) + "\n"
 }

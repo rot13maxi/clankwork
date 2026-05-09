@@ -94,3 +94,16 @@ func TestMaybeShowWorkspaceIntro(t *testing.T) {
 		t.Fatalf("forced intro output missing controls:\n%s", out.String())
 	}
 }
+
+func TestParseWorkspaceSessionList(t *testing.T) {
+	raw := strings.Join([]string{
+		"cw1\t1",
+		"other\t0",
+		"cw2\t1",
+	}, "\n")
+
+	got := parseWorkspaceSessionList(raw)
+	if len(got) != 2 || got[0] != "cw1" || got[1] != "cw2" {
+		t.Fatalf("parseWorkspaceSessionList() = %#v, want [cw1 cw2]", got)
+	}
+}
