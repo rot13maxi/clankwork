@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -172,5 +173,86 @@ func TestPreflightSandboxRejectsTmuxTransport(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "acp transport") {
 		t.Errorf("error should mention transport: %v", err)
+	}
+}
+
+func TestPreflightSandboxAllowsACPWithExistingBinary(t *testing.T) {
+	if _, err := os.Stat("/bin/sh"); err != nil {
+		t.Skip("/bin/sh not available on this platform")
+	}
+	rt := config.RuntimeConfig{
+		Transport: config.TransportACP,
+		Sandbox: config.SandboxConfig{
+			Enabled: true,
+			Command: "/bin/sh",
+		},
+	}
+	if err := preflightSandbox(rt); err != nil {
+		t.Fatalf("expected preflight to pass with acp+existing binary, got: %v", err)
+	}
+}
+
+func TestPreflightSandboxRejectsBlockNetWithAllowDomains(t *testing.T) {
+	if _, err := os.Stat("/bin/sh"); err != nil {
+		t.Skip("/bin/sh not available on this platform")
+	}
+	rt := config.RuntimeConfig{
+		Transport: config.TransportACP,
+		Sandbox: config.SandboxConfig{
+			Enabled:      true,
+			Command:      "/bin/sh",
+			BlockNet:     true,
+			AllowDomains: []string{"api.anthropic.com"},
+		},
+	}
+	err := preflightSandbox(rt)
+	if err == nil {
+		t.Fatal("expected error for block_net + allow_domains combo")
+	}
+	if !strings.Contains(err.Error(), "mutually exclusive") {
+		t.Errorf("error should explain mutual exclusion: %v", err)
+	}
+}
+
+func TestPreflightSandboxRejectsRelativeExtraPaths(t *testing.T) {
+	if _, err := os.Stat("/bin/sh"); err != nil {
+		t.Skip("/bin/sh not available on this platform")
+	}
+	for _, tc := range []struct {
+		name string
+		rt   config.RuntimeConfig
+	}{
+		{
+			name: "extra_read_paths",
+			rt: config.RuntimeConfig{
+				Transport: config.TransportACP,
+				Sandbox: config.SandboxConfig{
+					Enabled:        true,
+					Command:        "/bin/sh",
+					ExtraReadPaths: []string{"./cache"},
+				},
+			},
+		},
+		{
+			name: "extra_write_paths",
+			rt: config.RuntimeConfig{
+				Transport: config.TransportACP,
+				Sandbox: config.SandboxConfig{
+					Enabled:         true,
+					Command:         "/bin/sh",
+					ExtraWritePaths: []string{"relative/path"},
+				},
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := preflightSandbox(tc.rt)
+			if err == nil {
+				t.Fatalf("expected error for relative path in %s", tc.name)
+			}
+			if !strings.Contains(err.Error(), "must be absolute") {
+				t.Errorf("error should explain absolute requirement: %v", err)
+			}
+		})
 	}
 }

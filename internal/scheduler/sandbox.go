@@ -82,5 +82,24 @@ func preflightSandbox(rt config.RuntimeConfig) error {
 	if _, err := exec.LookPath(bin); err != nil {
 		return fmt.Errorf("sandbox binary %q not found on PATH (install with `brew install nono` or set runtime.sandbox.command): %w", bin, err)
 	}
+	if rt.Sandbox.BlockNet && len(rt.Sandbox.AllowDomains) > 0 {
+		return fmt.Errorf("sandbox.block_net is mutually exclusive with sandbox.allow_domains; pick one")
+	}
+	for _, p := range rt.Sandbox.ExtraReadPaths {
+		if p == "" {
+			continue
+		}
+		if !filepath.IsAbs(p) {
+			return fmt.Errorf("sandbox.extra_read_paths entry %q must be absolute", p)
+		}
+	}
+	for _, p := range rt.Sandbox.ExtraWritePaths {
+		if p == "" {
+			continue
+		}
+		if !filepath.IsAbs(p) {
+			return fmt.Errorf("sandbox.extra_write_paths entry %q must be absolute", p)
+		}
+	}
 	return nil
 }
