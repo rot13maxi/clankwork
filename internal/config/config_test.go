@@ -189,6 +189,64 @@ acp_permission_timeout_sec = 12
 	}
 }
 
+func TestSandboxConfigRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	toml := `
+[runtimes.claude-acp]
+command = "acp-adapter"
+args = ["--adapter", "claude"]
+transport = "acp"
+
+  [runtimes.claude-acp.sandbox]
+  enabled = true
+  profile = "claude-code"
+  command = "/usr/local/bin/nono"
+  extra_read_paths = ["/etc/ssl/certs"]
+  extra_write_paths = ["/tmp/agent-cache"]
+  allow_domains = ["api.anthropic.com", "github.com"]
+  block_net = false
+`
+	if err := os.WriteFile(filepath.Join(dir, "config.toml"), []byte(toml), 0600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	rt, ok := cfg.Runtimes["claude-acp"]
+	if !ok {
+		t.Fatal("claude-acp runtime missing")
+	}
+	sb := rt.Sandbox
+	if !sb.Enabled {
+		t.Fatal("sandbox should be enabled")
+	}
+	if sb.Profile != "claude-code" {
+		t.Errorf("profile = %q, want claude-code", sb.Profile)
+	}
+	if sb.Command != "/usr/local/bin/nono" {
+		t.Errorf("command = %q, want /usr/local/bin/nono", sb.Command)
+	}
+	if len(sb.ExtraReadPaths) != 1 || sb.ExtraReadPaths[0] != "/etc/ssl/certs" {
+		t.Errorf("extra_read_paths = %#v", sb.ExtraReadPaths)
+	}
+	if len(sb.ExtraWritePaths) != 1 || sb.ExtraWritePaths[0] != "/tmp/agent-cache" {
+		t.Errorf("extra_write_paths = %#v", sb.ExtraWritePaths)
+	}
+	if len(sb.AllowDomains) != 2 {
+		t.Errorf("allow_domains = %#v", sb.AllowDomains)
+	}
+}
+
+func TestSandboxDisabledByDefault(t *testing.T) {
+	cfg := DefaultConfig()
+	for name, rt := range cfg.Runtimes {
+		if rt.Sandbox.Enabled {
+			t.Errorf("runtime %q has sandbox enabled by default", name)
+		}
+	}
+}
+
 func TestLoadNormalizesRuntimeTransport(t *testing.T) {
 	dir := t.TempDir()
 	toml := `

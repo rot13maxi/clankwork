@@ -58,6 +58,22 @@ type RuntimeConfig struct {
 	ACPPermissionAllowPaths []string          `toml:"acp_permission_allow_paths"` // additional absolute path prefixes allowed by ACP policy
 	ACPPermissionDenyPaths  []string          `toml:"acp_permission_deny_paths"`  // additional path/token deny markers
 	ACPPermissionTimeoutSec int               `toml:"acp_permission_timeout_sec"` // manual approval timeout; 0 = default
+	Sandbox                 SandboxConfig     `toml:"sandbox"`                    // OS-level sandbox (nono)
+}
+
+// SandboxConfig wraps the agent process in a kernel-enforced sandbox (nono).
+// The agent's git worktree is always granted read-write; $CLANKWORK_HOME is
+// always granted read-write so the agent can reach the daemon socket. All other
+// access is denied unless an extra path or domain is listed below or the
+// chosen profile permits it.
+type SandboxConfig struct {
+	Enabled         bool     `toml:"enabled"`           // off by default; opt-in per runtime
+	Command         string   `toml:"command"`           // sandbox binary; defaults to "nono"
+	Profile         string   `toml:"profile"`           // optional nono profile name (e.g. "claude-code")
+	ExtraReadPaths  []string `toml:"extra_read_paths"`  // additional read-only paths beyond worktree+home
+	ExtraWritePaths []string `toml:"extra_write_paths"` // additional read-write paths beyond worktree+home
+	AllowDomains    []string `toml:"allow_domains"`     // additive network allowlist
+	BlockNet        bool     `toml:"block_net"`         // explicit hard deny of all network
 }
 
 const (
